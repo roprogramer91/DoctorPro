@@ -1,7 +1,9 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const db = require('../db');
+const { sendResetEmail } = require('../utils/mailer');
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -44,6 +46,57 @@ router.post('/login', async (req, res) => {
     res.json({ token, doctor: safe });
   } catch {
     res.status(500).json({ error: 'Error al iniciar sesión' });
+  }
+});
+
+// POST /api/auth/forgot-password
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email requerido' });
+
+  try {
+    const { rows } = await db.query('SELECT id FROM doctors WHERE email = $1', [email]);
+    // Respuesta genérica para no revelar si el email existe
+    if (!rows.length) return res.json({ message: 'Si el email existe, recibirás un enlace de recupero.' });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 3600000); // 1 hora
+
+    await db.query(
+      'UPDATE doctors SET reset_token = $1, reset_token_expires = $2 WHERE email = $3',
+      [token, expires, email]
+    );
+
+    await sendResetEmail(email, token, process.env.FRONTEND_URL.split(',')[0].trim());
+    res.json({ message: 'Si el email existe, recibirás un enlace de recupero.' });
+  } catch (err) {
+    console.error('forgot-password error:', err);
+    res.status(500).json({ error: 'Error al procesar la solicitud' });
+  }
+});
+
+// POST /api/auth/reset-password
+router.post('/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: 'Token y contraseña requeridos' });
+
+  try {
+    const { rows } = await db.query(
+      'SELECT id FROM doctors WHERE reset_token = $1 AND reset_token_expires > NOW()',
+      [token]
+    );
+    if (!rows.length) return res.status(400).json({ error: 'Token inválido o vencido' });
+
+    const hash = await bcrypt.hash(password, 10);
+    await db.query(
+      'UPDATE doctors SET password = $1, reset_token = NULL, reset_token_expires = NULL WHERE id = $2',
+      [hash, rows[0].id]
+    );
+
+    res.json({ message: 'Contraseña actualizada correctamente' });
+  } catch (err) {
+    console.error('reset-password error:', err);
+    res.status(500).json({ error: 'Error al restablecer la contraseña' });
   }
 });
 

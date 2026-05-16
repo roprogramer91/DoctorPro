@@ -46,7 +46,19 @@
     <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="doctor@mail.com"></div>
     <div class="field"><label>Contraseña</label><input type="password" id="login-pass" placeholder="••••••••"></div>
     <button class="btn-submit" onclick="doLogin()">Ingresar</button>
+    <div class="toggle" style="margin-top:10px;">
+      <a onclick="showForgot()" style="font-size:12px;color:#888;">¿Olvidaste tu contraseña?</a>
+    </div>
     <div class="toggle">¿No tenés cuenta? <a onclick="toggleForm()">Registrarse gratis</a></div>
+  </div>
+
+  <!-- RECUPERO -->
+  <div id="form-forgot" style="display:none">
+    <h2>Recuperar contraseña</h2>
+    <p style="font-size:12px;color:#666;margin-bottom:14px;">Ingresá tu email y te enviaremos un enlace para restablecer tu contraseña.</p>
+    <div class="field"><label>Email</label><input type="email" id="forgot-email" placeholder="doctor@mail.com"></div>
+    <button class="btn-submit" onclick="doForgot()">Enviar enlace</button>
+    <div class="toggle"><a onclick="backToLogin()">Volver al inicio de sesión</a></div>
   </div>
 
   <!-- REGISTRO -->
@@ -97,6 +109,38 @@
       localStorage.setItem('dp_token', data.token);
       localStorage.setItem('dp_doctor', JSON.stringify(data.doctor));
       window.location.href = 'form.html';
+    } catch { showError('Error de conexión con el servidor'); }
+  }
+
+  function showForgot() {
+    document.getElementById('form-login').style.display  = 'none';
+    document.getElementById('form-register').style.display = 'none';
+    document.getElementById('form-forgot').style.display = '';
+    showError('');
+  }
+
+  function backToLogin() {
+    document.getElementById('form-forgot').style.display = 'none';
+    document.getElementById('form-login').style.display  = '';
+    showError('');
+  }
+
+  async function doForgot() {
+    const email = document.getElementById('forgot-email').value.trim();
+    if (!email) return showError('Ingresá tu email');
+    try {
+      const res = await fetch(`${API}/auth/forgot-password`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (!res.ok) return showError(data.error);
+      showError('');
+      document.getElementById('form-forgot').innerHTML =
+        `<p style="text-align:center;color:#2a7a2a;padding:20px 0;">
+           ✓ Si el email existe, recibirás el enlace en unos minutos.
+         </p>
+         <div class="toggle"><a onclick="backToLogin()">Volver al inicio de sesión</a></div>`;
     } catch { showError('Error de conexión con el servidor'); }
   }
 
