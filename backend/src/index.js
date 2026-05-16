@@ -6,7 +6,15 @@ const cors    = require('cors');
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: process.env.FRONTEND_URL }));
+
+const allowedOrigins = (process.env.FRONTEND_URL || '').split(',').map(o => o.trim());
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error('CORS: origen no permitido'));
+  }
+}));
+
 app.use(express.json());
 
 app.use('/api/auth',    require('./routes/auth'));
