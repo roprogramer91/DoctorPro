@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CardioMed - Evaluación Riesgo Quirúrgico</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* Evita scroll horizontal en cualquier pantalla */
+  html { overflow-x: hidden; }
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background: #f0f0f0;
+         max-width: 100%; overflow-x: hidden; }
+
+  .page {
+    max-width: 794px;   /* 210 mm ≈ 794 px */
+    width: 100%;
+    min-height: 297mm;
+    margin: 10px auto;
+    background: white;
+    padding: 12mm 14mm 10mm 14mm;
+    box-shadow: 0 0 8px rgba(0,0,0,0.2);
+  }
+
+  /* HEADER */
+  .header { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 8px; }
+  .header-logo { width: 55px; }
+  .header-brand { display: flex; flex-direction: column; align-items: center; }
+  .brand-name { font-size: 28px; font-weight: bold; letter-spacing: 1px; }
+  .brand-name span.C { color: #cc0000; }
+  .brand-name span.M { color: #cc0000; }
+  .brand-url { font-size: 9px; color: #555; letter-spacing: 2px; }
+  .title-bar {
+    text-align: center; font-weight: bold; font-size: 12px;
+    border-top: 1.5px solid #000; border-bottom: 1.5px solid #000;
+    padding: 4px 0; margin: 8px 0;
+    letter-spacing: 0.5px;
+  }
+
+  /* PATIENT FIELDS */
+  .pf-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+  .pf-table td { padding: 2px 3px 3px 0; vertical-align: bottom; white-space: nowrap; }
+  .pf-table td.lbl { font-weight: bold; font-size: 11px; padding-right: 4px; }
+  .pf-table td.lbl-pl { font-weight: bold; font-size: 11px; padding-right: 4px; padding-left: 10px; }
+  .pf-table td.lbl-vt { font-weight: bold; font-size: 11px; padding-right: 4px; vertical-align: top; padding-top: 4px; }
+  .pf-table td.val { width: 99%; }
+  .pf-table td.val-fixed-80  { width: 80px; min-width: 80px; }
+  .pf-table td.val-fixed-100 { width: 100px; min-width: 100px; }
+  .pf-table input[type="text"] {
+    width: 100%;
+    border: none; border-bottom: 1px solid #333;
+    outline: none; font-size: 11px; padding: 1px 3px;
+    background: transparent;
+  }
+  .pf-table input[type="text"]:focus { border-bottom-color: #cc0000; background: #fff8f8; }
+
+  textarea {
+    width: 100%; border: 1px solid #ccc; border-radius: 2px;
+    font-size: 11px; font-family: Arial, sans-serif;
+    padding: 3px 5px; resize: vertical; outline: none;
+    background: transparent;
+  }
+  textarea:focus { border-color: #cc0000; background: #fff8f8; }
+
+  /* SECTIONS */
+  .section { margin: 8px 0; }
+  .section-title {
+    font-weight: bold; font-size: 11px; margin-bottom: 5px;
+    border-bottom: 1px solid #ccc; padding-bottom: 2px;
+  }
+  .sub-title { font-weight: bold; margin: 5px 0 3px 8px; font-size: 11px; }
+
+  /* CHECKBOXES */
+  .check-group { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 3px 0 3px 8px; }
+  .check-item { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+  .check-item input[type="checkbox"] {
+    width: 13px; height: 13px; cursor: pointer;
+    accent-color: #cc0000;
+  }
+  .check-item label { cursor: pointer; font-size: 11px; user-select: none; }
+
+  /* RISK SUMMARY BOXES */
+  .risk-boxes { display: flex; gap: 6px; margin: 8px 0 6px 0; }
+  .risk-box {
+    flex: 1; border: 1.5px solid #333; padding: 5px 8px;
+    text-align: center; font-size: 10px; font-weight: bold;
+    cursor: pointer; border-radius: 2px; transition: all 0.2s;
+    user-select: none;
+  }
+  .risk-box .box-title { font-size: 11px; font-weight: bold; margin-bottom: 2px; }
+  .risk-box .box-crit { font-size: 9px; font-weight: normal; color: #555; }
+  .risk-box.active-alto     { background: #ffcccc; border: 2.5px solid #cc0000; }
+  .risk-box.active-moderado { background: #fff3cc; border: 2.5px solid #cc8800; }
+  .risk-box.active-bajo     { background: #ccffcc; border: 2.5px solid #006600; }
+  .risk-box.active-alto .box-title,
+  .risk-box.active-moderado .box-title,
+  .risk-box.active-bajo .box-title { text-decoration: underline; font-size: 12px; }
+  .risk-box.computed { outline: 3px solid #0055cc; }
+
+  /* SURGERY TABLE */
+  .surgery-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+  .surgery-table th {
+    background: #333; color: white; padding: 4px 6px;
+    text-align: center; font-size: 10px; border: 1px solid #555;
+  }
+  .surgery-table td { border: 1px solid #ccc; padding: 3px 6px; vertical-align: top; font-size: 10px; }
+  .surgery-table .col-alto th { background: #cc0000; }
+  .surgery-table .col-mod th { background: #cc8800; }
+  .surgery-table .col-bajo th { background: #006600; }
+  .surgery-table td .check-item { margin-bottom: 2px; }
+
+  /* CONCLUSION TABLE */
+  .concl-table { width: 100%; border-collapse: collapse; margin: 6px 0; }
+  .concl-table th, .concl-table td {
+    border: 1.5px solid #333; padding: 5px 8px; text-align: center; font-size: 10px;
+  }
+  .concl-table th { background: #eee; font-weight: bold; }
+  .concl-cell {
+    cursor: pointer; transition: background 0.2s;
+  }
+  .concl-cell:hover { background: #f0f0f0; }
+  .concl-cell.selected-bajo     { background: #ccffcc; font-weight: bold; border: 3px solid #006600; font-size: 11px; }
+  .concl-cell.selected-moderado { background: #fff3cc; font-weight: bold; border: 3px solid #cc8800; font-size: 11px; }
+  .concl-cell.selected-alto     { background: #ffcccc; font-weight: bold; border: 3px solid #cc0000; font-size: 11px; }
+  .concl-cell.auto-highlight { outline: 2px solid #0055cc; }
+
+  /* Sección F */
+  .concl-resumen {
+    font-size: 12px; font-weight: bold; padding: 8px 12px;
+    border: 1.5px solid #333; border-radius: 2px;
+    min-height: 30px; background: #fafafa; letter-spacing: 0.2px;
+  }
+  .concl-resumen.vacio { color: #aaa; font-weight: normal; font-style: italic; }
+
+  /* SIGNATURE */
+  .signature-area {
+    display: flex; justify-content: flex-end; margin-top: 14px;
+    align-items: flex-end;
+  }
+  .sig-block { text-align: center; }
+  .sig-img-wrap {
+    width: 200px; height: 70px;
+    border-bottom: 1.5px solid #333;
+    display: flex; align-items: flex-end; justify-content: center;
+    overflow: hidden; margin-bottom: 6px;
+  }
+  .sig-img-wrap img { max-height: 68px; max-width: 198px; object-fit: contain; }
+  .sig-nombre    { font-size: 11px; font-weight: bold; color: #000; margin-top: 3px; }
+  .sig-especialidad { font-size: 10px; color: #333; margin-top: 1px; }
+  .sig-mat       { font-size: 10px; color: #444; margin-top: 1px; }
+  #sig-upload-btn {
+    font-size: 9px; color: #cc0000; cursor: pointer; text-decoration: underline;
+    border: none; background: none; padding: 3px 0; display: block; margin: 4px auto 0;
+  }
+  #sig-input { display: none; }
+
+  /* SCROLL WRAPPER — las tablas anchas scrollean dentro de su contenedor */
+  .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+
+  /* SURGERY TABLE headers por color */
+  .th-alto { background: #8b0000; }
+  .th-mod  { background: #8b5e00; }
+  .th-bajo { background: #004d00; }
+
+  /* TOOLBAR */
+  .toolbar {
+    max-width: 794px; width: 100%; margin: 0 auto 6px auto;
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    padding: 0 6px;
+  }
+  .btn {
+    padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer;
+    font-size: 12px; font-weight: bold;
+  }
+  .btn-print { background: #cc0000; color: white; }
+  .btn-print:hover { background: #aa0000; }
+  .btn-clear { background: #666; color: white; }
+  .btn-clear:hover { background: #444; }
+  .btn-copy  { background: #0055cc; color: white; }
+  .btn-copy:hover  { background: #003ea0; }
+  .btn-copy.copiado { background: #006600; }
+  .btn-savesig { background: #0055cc; color: white; font-size: 11px; }
+  .auto-badge {
+    font-size: 10px; background: #e8f0ff; border: 1px solid #0055cc;
+    color: #0055cc; padding: 3px 8px; border-radius: 10px;
+  }
+
+  hr.divider { border: none; border-top: 1px solid #ccc; margin: 7px 0; }
+
+  /* ── TABLET (≤768px) ───────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    body { font-size: 13px; }
+    .page { padding: 6vw 4vw; }
+    .toolbar { padding: 0 4vw; }
+    .pf-table td { font-size: 13px; }
+    .pf-table input[type="text"], textarea { font-size: 13px; }
+    .check-item label, .section-title, .sub-title { font-size: 13px; }
+    .check-item input[type="checkbox"] { width: 16px; height: 16px; }
+    .surgery-table td, .surgery-table th { font-size: 12px; }
+    .concl-table th, .concl-table td { font-size: 12px; padding: 6px; }
+    .risk-box .box-title { font-size: 13px; }
+    .risk-box .box-crit  { font-size: 11px; }
+    .title-bar { font-size: 13px; }
+    .brand-name { font-size: 26px; }
+  }
+
+  /* ── MÓVIL (≤540px) ────────────────────────────────────────────── */
+  @media (max-width: 540px) {
+    body { background: white; font-size: 14px; }
+    .page {
+      width: 100vw; max-width: 100vw;
+      margin: 0; padding: 12px 12px 16px;
+      box-shadow: none; min-height: unset;
+    }
+    .toolbar {
+      width: 100vw; max-width: 100vw;
+      flex-direction: column; align-items: stretch;
+      padding: 8px 12px; gap: 6px; margin-bottom: 0;
+    }
+    .btn { width: 100%; padding: 11px 14px; font-size: 14px; text-align: center; }
+    .auto-badge { text-align: center; font-size: 11px; }
+
+    /* Campos del paciente: cada celda apilada */
+    .pf-table, .pf-table tbody { display: block; }
+    .pf-table tr  { display: block; margin-bottom: 10px; }
+    .pf-table td  {
+      display: block; width: 100% !important; min-width: 0 !important;
+      white-space: normal; padding: 2px 0;
+    }
+    .pf-table td.lbl-pl { padding-left: 0; }
+    .pf-table td.lbl,
+    .pf-table td.lbl-pl,
+    .pf-table td.lbl-vt { font-size: 13px; font-weight: bold; padding-bottom: 1px; }
+    .pf-table input[type="text"] { font-size: 14px; padding: 5px 4px; }
+    textarea { font-size: 14px; }
+
+    /* Checkboxes táctiles */
+    .check-item input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; }
+    .check-item label { font-size: 14px; }
+    .check-group { gap: 8px 10px; margin-left: 0; }
+
+    /* Riesgo clínico: cajas en columna */
+    .risk-boxes { flex-direction: column; }
+    .risk-box { padding: 9px 12px; }
+    .risk-box .box-title { font-size: 14px; }
+    .risk-box .box-crit  { font-size: 12px; }
+
+    /* Tabla cirugía: columnas apiladas verticalmente */
+    .scroll-x:has(.surgery-table) { overflow-x: unset; }
+    .surgery-table       { display: block; min-width: 0; }
+    .surgery-table thead { display: none; }
+    .surgery-table tbody,
+    .surgery-table tr    { display: block; width: 100%; }
+    .surgery-table td    { display: block; width: 100%; border: none; padding: 0; margin-bottom: 12px; }
+    .surgery-table td::before {
+      display: block; color: white; font-weight: bold; font-size: 13px;
+      padding: 5px 10px; margin-bottom: 8px;
+    }
+    .surgery-table td:nth-child(1)::before { content: "ALTO RIESGO >5%";       background: #8b0000; }
+    .surgery-table td:nth-child(2)::before { content: "MODERADO RIESGO 1-5%";  background: #8b5e00; }
+    .surgery-table td:nth-child(3)::before { content: "BAJO RIESGO <1%";       background: #004d00; }
+    .surgery-table td .check-item { margin-bottom: 6px; padding: 0 8px; }
+
+    /* Tabla conclusión: scroll horizontal */
+    .concl-table { min-width: 340px; }
+
+    /* Secciones */
+    .section-title { font-size: 13px; }
+    .sub-title { font-size: 13px; margin-left: 0; }
+    .title-bar { font-size: 12px; letter-spacing: 0; padding: 5px 0; }
+    .brand-name { font-size: 22px; }
+    hr.divider { margin: 10px 0; }
+
+    /* Firma centrada */
+    .signature-area { justify-content: center; }
+  }
+
+  @media print {
+    body { background: white; }
+    .toolbar { display: none !important; }
+    .page { margin: 0; box-shadow: none; padding: 10mm 12mm 8mm 12mm; }
+    #sig-upload-btn { display: none !important; }
+    textarea { border: none; border-bottom: 1px solid #ccc; resize: none; }
+    input[type="text"] { border-bottom: 1px solid #ccc !important; }
+    @page { margin: 8mm; size: A4; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button class="btn btn-print" onclick="window.print()">Imprimir / Guardar PDF</button>
+  <button class="btn btn-copy" id="btn-copy-hc" onclick="copyToHC()">Copiar para HC</button>
+  <button class="btn btn-clear" onclick="clearForm()">Limpiar formulario</button>
+  <button class="btn" style="background:#444;color:white;margin-left:auto" onclick="logout()">Salir</button>
+  <span class="auto-badge">&#9654; El riesgo clínico y conclusión se calculan automáticamente</span>
+</div>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <svg class="header-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <path d="M50 80 C20 55 5 38 5 25 C5 12 15 5 25 5 C33 5 41 10 50 20 C59 10 67 5 75 5 C85 5 95 12 95 25 C95 38 80 55 50 80Z" fill="#cc0000"/>
+      <path d="M50 80 C40 60 28 48 22 38 C32 45 44 55 50 70 C56 55 68 45 78 38 C72 48 60 60 50 80Z" fill="#aa0000" opacity="0.4"/>
+    </svg>
+    <div class="header-brand">
+      <div class="brand-name">
+        <span class="C">C</span>ardio<span class="M">M</span>ed
+      </div>
+      <div class="brand-url">WWW.CARDIOMED.ONLINE</div>
+    </div>
+  </div>
+
+  <div class="title-bar">EVALUACIÓN DEL RIESGO CLÍNICO QUIRÚRGICO EN CIRUGÍAS NO CARDÍACAS</div>
+
+  <!-- PATIENT INFO -->
+  <table class="pf-table">
+    <tr>
+      <td class="lbl">PACIENTE:</td>
+      <td class="val"><input type="text" id="paciente" title="Nombre del paciente"></td>
+      <td class="lbl-pl">EDAD:</td>
+      <td class="val-fixed-80" colspan="3"><input type="text" id="edad" title="Edad en años" placeholder="años"></td>
+    </tr>
+    <tr>
+      <td class="lbl">FECHA:</td>
+      <td class="val-fixed-100"><input type="text" id="fecha" title="Fecha"></td>
+      <td class="lbl-pl">CIRUGÍA:</td>
+      <td class="val" colspan="3"><input type="text" id="cirugia_text" title="Cirugía" oninput="updateConclResumen()"></td>
+    </tr>
+    <tr>
+      <td class="lbl">ANTECEDENTES:</td>
+      <td class="val" colspan="5"><input type="text" id="antecedentes" title="Antecedentes"></td>
+    </tr>
+    <tr>
+      <td class="lbl">MEDICACIÓN HABITUAL:</td>
+      <td class="val" colspan="5"><input type="text" id="medicacion" title="Medicación habitual"></td>
+    </tr>
+    <tr>
+      <td class="lbl">EXAMEN FÍSICO:</td>
+      <td class="val"><input type="text" id="examen" title="Examen físico"></td>
+      <td class="lbl-pl">PA:</td>
+      <td class="val-fixed-80" colspan="3"><input type="text" id="pa" title="Presión arterial"></td>
+    </tr>
+    <tr>
+      <td class="lbl-vt">ECG:</td>
+      <td class="val" colspan="5">
+        <textarea id="ecg" rows="2" placeholder="Descripción del electrocardiograma..." title="ECG"></textarea>
+      </td>
+    </tr>
+  </table>
+
+  <hr class="divider">
+
+  <!-- A) RIESGO CLÍNICO -->
+  <div class="section">
+    <div class="section-title">A) RIESGO CLÍNICO PREOPERATORIO</div>
+
+    <div class="sub-title">CRITERIOS MAYORES:</div>
+    <div class="check-group">
+      <label class="check-item">
+        <input type="checkbox" id="cm1" onchange="calcRiesgoClinico()">
+        <label for="cm1">CIRUGÍA DE URGENCIA/EMERGENCIA</label>
+      </label>
+      <label class="check-item">
+        <input type="checkbox" id="cm2" onchange="calcRiesgoClinico()">
+        <label for="cm2">IAM, SCA O ANGINA CF III-IV &lt; 6 MESES</label>
+      </label>
+      <label class="check-item">
+        <input type="checkbox" id="cm3" onchange="calcRiesgoClinico()">
+        <label for="cm3">ESTENOSIS AÓRTICA O MITRAL GRAVE</label>
+      </label>
+    </div>
+
+    <div class="sub-title">CRITERIOS MENORES:</div>
+    <div class="check-group">
+      <label class="check-item">
+        <input type="checkbox" id="cn1" onchange="calcRiesgoClinico()">
+        <label for="cn1">&gt;70 AÑOS</label>
+      </label>
+      <label class="check-item">
+        <input type="checkbox" id="cn2" onchange="calcRiesgoClinico()">
+        <label for="cn2">DBT</label>
+      </label>
+      <label class="check-item">
+        <input type="checkbox" id="cn3" onchange="calcRiesgoClinico()">
+        <label for="cn3">VASCULOPATÍA</label>
+      </label>
+      <label class="check-item">
+        <input type="checkbox" id="cn4" onchange="calcRiesgoClinico()">
+        <label for="cn4">ENF. CORONARIA</label>
+      </label>
+      <label class="check-item">
+        <input type="checkbox" id="cn5" onchange="calcRiesgoClinico()">
+        <label for="cn5">ICC O FEY &lt;40%</label>
+      </label>
+      <label class="check-item">
+        <input type="checkbox" id="cn6" onchange="calcRiesgoClinico()">
+        <label for="cn6">ACV</label>
+      </label>
+      <label class="check-item">
+        <input type="checkbox" id="cn7" onchange="calcRiesgoClinico()">
+        <label for="cn7">IAO O MITRAL GRAVE</label>
+      </label>
+      <label class="check-item">
+        <input type="checkbox" id="cn8" onchange="calcRiesgoClinico()">
+        <label for="cn8">EPOC GRAVE</label>
+      </label>
+      <label class="check-item">
+        <input type="checkbox" id="cn9" onchange="calcRiesgoClinico()">
+        <label for="cn9">CÁNCER ACTIVO</label>
+      </label>
+      <label class="check-item">
+        <input type="checkbox" id="cn10" onchange="calcRiesgoClinico()">
+        <label for="cn10">CREAT &gt;2mg/dL</label>
+      </label>
+    </div>
+
+    <div class="risk-boxes">
+      <div class="risk-box" id="box-alto-cli" onclick="selectRiesgoClinico('alto')">
+        <div class="box-title">ALTO RIESGO</div>
+        <div class="box-crit">≥1 mayor ó ≥2 menores</div>
+      </div>
+      <div class="risk-box" id="box-moderado-cli" onclick="selectRiesgoClinico('moderado')">
+        <div class="box-title">RIESGO MODERADO</div>
+        <div class="box-crit">Ningún mayor y 1 menor</div>
+      </div>
+      <div class="risk-box" id="box-bajo-cli" onclick="selectRiesgoClinico('bajo')">
+        <div class="box-title">BAJO RIESGO</div>
+        <div class="box-crit">Ningún mayor ni menor</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- B) RIESGO DE LA CIRUGÍA -->
+  <div class="section">
+    <div class="section-title">B) RIESGO DE LA CIRUGÍA</div>
+    <div class="scroll-x">
+    <table class="surgery-table">
+      <thead>
+        <tr>
+          <th class="th-alto">ALTO RIESGO &gt;5%</th>
+          <th class="th-mod">MODERADO RIESGO 1-5%</th>
+          <th class="th-bajo">BAJO RIESGO &lt;1%</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <label class="check-item"><input type="checkbox" name="surg_alto" value="aortica" onchange="calcRiesgoCirugia()"><label>Aórtica</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_alto" value="vasc_per" onchange="calcRiesgoCirugia()"><label>Vascular periférica</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_alto" value="toracica" onchange="calcRiesgoCirugia()"><label>Torácica mayor</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_alto" value="gral_mayor" onchange="calcRiesgoCirugia()"><label>General mayor (resección visceral, trasplante, colectomía)</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_alto" value="neuro" onchange="calcRiesgoCirugia()"><label>Neurocirugía mayor</label></label>
+          </td>
+          <td>
+            <label class="check-item"><input type="checkbox" name="surg_mod" value="abd" onchange="calcRiesgoCirugia()"><label>Abdominal, no incluidas en general mayor</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_mod" value="endart" onchange="calcRiesgoCirugia()"><label>Endarterectomías carotídeas</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_mod" value="angio" onchange="calcRiesgoCirugia()"><label>Angioplastia periférica</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_mod" value="endosc_ter" onchange="calcRiesgoCirugia()"><label>Procedimientos endoscópicos terapéuticos</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_mod" value="cab_cuello" onchange="calcRiesgoCirugia()"><label>Cabeza y cuello</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_mod" value="ortop_may" onchange="calcRiesgoCirugia()"><label>Ortopédica mayor (cadera, fémur, rodilla)</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_mod" value="urog_gine_may" onchange="calcRiesgoCirugia()"><label>Urológica o ginecológica mayor (riñón, vejiga, próstata, útero)</label></label>
+          </td>
+          <td>
+            <label class="check-item"><input type="checkbox" name="surg_bajo" value="mamas" onchange="calcRiesgoCirugia()"><label>Mamas</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_bajo" value="endocrina" onchange="calcRiesgoCirugia()"><label>Endócrina</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_bajo" value="oftalm" onchange="calcRiesgoCirugia()"><label>Oftalmológica</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_bajo" value="gine_men" onchange="calcRiesgoCirugia()"><label>Ginecológica menor</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_bajo" value="plastica" onchange="calcRiesgoCirugia()"><label>Plástica</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_bajo" value="ortop_men" onchange="calcRiesgoCirugia()"><label>Ortopédica menor</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_bajo" value="urol_men" onchange="calcRiesgoCirugia()"><label>Urológica menor</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_bajo" value="endosc_diag" onchange="calcRiesgoCirugia()"><label>Endoscopía diagnóstica</label></label>
+            <label class="check-item"><input type="checkbox" name="surg_bajo" value="dental" onchange="calcRiesgoCirugia()"><label>Dental</label></label>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    </div><!-- /scroll-x -->
+  </div>
+
+  <hr class="divider">
+
+  <!-- C) CONCLUSIÓN -->
+  <div class="section">
+    <div class="section-title">C) CONCLUSIÓN DE LA EVALUACIÓN DEL RIESGO CARDIOVASCULAR CLÍNICO QUIRÚRGICO</div>
+    <div class="scroll-x">
+    <table class="concl-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>CIRUGÍA DE BAJO RIESGO</th>
+          <th>CIRUGÍA DE RIESGO MODERADO</th>
+          <th>CIRUGÍA DE RIESGO ALTO</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>RIESGO CLÍNICO BAJO</th>
+          <td class="concl-cell" id="c-bajo-bajo" data-val="BAJO" onclick="selectConcl('c-bajo-bajo')">BAJO</td>
+          <td class="concl-cell" id="c-bajo-mod"  data-val="BAJO" onclick="selectConcl('c-bajo-mod')">BAJO</td>
+          <td class="concl-cell" id="c-bajo-alto" data-val="MODERADO" onclick="selectConcl('c-bajo-alto')">MODERADO</td>
+        </tr>
+        <tr>
+          <th>RIESGO CLÍNICO MODERADO</th>
+          <td class="concl-cell" id="c-mod-bajo"  data-val="BAJO" onclick="selectConcl('c-mod-bajo')">BAJO</td>
+          <td class="concl-cell" id="c-mod-mod"   data-val="MODERADO" onclick="selectConcl('c-mod-mod')">MODERADO</td>
+          <td class="concl-cell" id="c-mod-alto"  data-val="ALTO" onclick="selectConcl('c-mod-alto')">ALTO</td>
+        </tr>
+        <tr>
+          <th>RIESGO CLÍNICO ALTO</th>
+          <td class="concl-cell" id="c-alto-bajo" data-val="BAJO" onclick="selectConcl('c-alto-bajo')">BAJO</td>
+          <td class="concl-cell" id="c-alto-mod"  data-val="ALTO" onclick="selectConcl('c-alto-mod')">ALTO</td>
+          <td class="concl-cell" id="c-alto-alto" data-val="ALTO" onclick="selectConcl('c-alto-alto')">ALTO</td>
+        </tr>
+      </tbody>
+    </table>
+    </div><!-- /scroll-x -->
+  </div>
+
+  <hr class="divider">
+
+  <!-- D) EXÁMENES COMPLEMENTARIOS -->
+  <div class="section">
+    <div class="section-title">D) EXÁMENES COMPLEMENTARIOS</div>
+    <textarea id="examenes" rows="3" placeholder="Especificar estudios solicitados..."></textarea>
+  </div>
+
+  <hr class="divider">
+
+  <!-- E) RECOMENDACIONES -->
+  <div class="section">
+    <div class="section-title">E) RECOMENDACIONES</div>
+    <textarea id="recomendaciones" rows="4" placeholder="Recomendaciones para el paciente y el equipo quirúrgico..."></textarea>
+  </div>
+
+  <hr class="divider">
+
+  <!-- F) CONCLUSIÓN TEXTO -->
+  <div class="section">
+    <div class="section-title">F) CONCLUSIÓN RIESGO CLÍNICO QUIRÚRGICO</div>
+    <div id="concl-texto" class="concl-resumen vacio">Se completará automáticamente al seleccionar criterios y tipo de cirugía.</div>
+  </div>
+
+  <!-- FIRMA -->
+  <div class="signature-area">
+    <div class="sig-block">
+      <div class="sig-img-wrap" id="sig-wrap">
+        <img id="sig-img" src="" alt="" style="display:none">
+      </div>
+      <div class="sig-nombre">Dra. Delma Adriana Noguera</div>
+      <div class="sig-especialidad">Cardióloga Clínica</div>
+      <div class="sig-mat">MP 235697 &nbsp;|&nbsp; MN 174112</div>
+      <button id="sig-upload-btn" onclick="document.getElementById('sig-input').click()">Cambiar firma</button>
+      <input type="file" id="sig-input" accept="image/*" onchange="loadSignature(event)">
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ── Config ───────────────────────────────────────────────────────────────────
+const API = window.location.hostname === 'localhost'
+  ? 'http://localhost:3000/api'
+  : 'https://doctorpro-api.up.railway.app/api'; // reemplazar con URL real de Railway prod
+
+// ── State ────────────────────────────────────────────────────────────────────
+let riesgoClinicoActual = null;
+let riesgoCirugiaActual = null;
+let conclManual = null;
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+window.onload = async function() {
+  // Auth guard: si no hay token, ir al login
+  const token = localStorage.getItem('dp_token');
+  if (!token) { window.location.href = 'login.html'; return; }
+
+  // Cargar perfil del médico desde API
+  try {
+    const res = await fetch(`${API}/profile`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) { localStorage.clear(); window.location.href = 'login.html'; return; }
+    const doctor = await res.json();
+    loadDoctorProfile(doctor);
+  } catch {
+    // Si falla la red, usar datos guardados localmente
+    const cached = localStorage.getItem('dp_doctor');
+    if (cached) loadDoctorProfile(JSON.parse(cached));
+  }
+
+  // Fecha de hoy
+  const today = new Date();
+  document.getElementById('fecha').value =
+    today.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'});
+};
+
+function loadDoctorProfile(doctor) {
+  // Firma
+  const img = document.getElementById('sig-img');
+  img.src = doctor.signature_url || '';
+  img.style.display = doctor.signature_url ? 'block' : 'none';
+  // Nombre, especialidad, matrículas
+  const elName = document.querySelector('.sig-nombre');
+  const elSpec = document.querySelector('.sig-especialidad');
+  const elMat  = document.querySelector('.sig-mat');
+  if (elName) elName.textContent = doctor.name || '';
+  if (elSpec) elSpec.textContent = doctor.specialty || '';
+  if (elMat)  elMat.textContent  = [doctor.mp ? `MP ${doctor.mp}` : '', doctor.mn ? `MN ${doctor.mn}` : ''].filter(Boolean).join('  |  ');
+  // Guardar en caché local
+  localStorage.setItem('dp_doctor', JSON.stringify(doctor));
+}
+
+function logout() {
+  localStorage.removeItem('dp_token');
+  localStorage.removeItem('dp_doctor');
+  window.location.href = 'login.html';
+}
+
+// ── Riesgo Clínico ───────────────────────────────────────────────────────────
+function calcRiesgoClinico() {
+  const mayores = ['cm1','cm2','cm3'].filter(id => document.getElementById(id).checked).length;
+  const menores = ['cn1','cn2','cn3','cn4','cn5','cn6','cn7','cn8','cn9','cn10']
+                    .filter(id => document.getElementById(id).checked).length;
+
+  let resultado;
+  if (mayores >= 1 || menores >= 2) resultado = 'alto';
+  else if (menores === 1) resultado = 'moderado';
+  else resultado = 'bajo';
+
+  applyRiesgoClinico(resultado, true);
+  conclManual = null;
+  updateConclusion();
+}
+
+function selectRiesgoClinico(nivel) {
+  applyRiesgoClinico(nivel, false);
+  conclManual = null;
+  updateConclusion();
+}
+
+function applyRiesgoClinico(nivel, isComputed) {
+  riesgoClinicoActual = nivel;
+  const ids = {
+    alto: 'box-alto-cli',
+    moderado: 'box-moderado-cli',
+    bajo: 'box-bajo-cli'
+  };
+  const classes = { alto:'active-alto', moderado:'active-moderado', bajo:'active-bajo' };
+
+  Object.entries(ids).forEach(([k, id]) => {
+    const el = document.getElementById(id);
+    el.className = 'risk-box';
+    if (k === nivel) {
+      el.classList.add(classes[k]);
+      if (isComputed) el.classList.add('computed');
+    }
+  });
+}
+
+// ── Riesgo Cirugía ───────────────────────────────────────────────────────────
+function calcRiesgoCirugia() {
+  const altoChecked  = document.querySelectorAll('input[name="surg_alto"]:checked').length;
+  const modChecked   = document.querySelectorAll('input[name="surg_mod"]:checked').length;
+  const bajoChecked  = document.querySelectorAll('input[name="surg_bajo"]:checked').length;
+
+  if (altoChecked > 0) riesgoCirugiaActual = 'alto';
+  else if (modChecked > 0) riesgoCirugiaActual = 'moderado';
+  else if (bajoChecked > 0) riesgoCirugiaActual = 'bajo';
+  else riesgoCirugiaActual = null;
+
+  conclManual = null;
+  updateConclusion();
+}
+
+// ── Conclusión ───────────────────────────────────────────────────────────────
+function updateConclusion() {
+  if (conclManual !== null) return; // médico eligió manualmente
+
+  // Map: [riesgoClinico][riesgoCirugia] → celda
+  const map = {
+    bajo:     { bajo: 'c-bajo-bajo', moderado: 'c-bajo-mod',  alto: 'c-bajo-alto' },
+    moderado: { bajo: 'c-mod-bajo',  moderado: 'c-mod-mod',   alto: 'c-mod-alto'  },
+    alto:     { bajo: 'c-alto-bajo', moderado: 'c-alto-mod',  alto: 'c-alto-alto' }
+  };
+
+  clearConclHighlight();
+
+  if (riesgoClinicoActual && riesgoCirugiaActual) {
+    const celdaId = map[riesgoClinicoActual][riesgoCirugiaActual];
+    highlightConcl(celdaId, true);
+  }
+  updateConclResumen();
+}
+
+function selectConcl(id) {
+  conclManual = id;
+  clearConclHighlight();
+  highlightConcl(id, false);
+  updateConclResumen();
+}
+
+function clearConclHighlight() {
+  document.querySelectorAll('.concl-cell').forEach(el => {
+    el.classList.remove('selected-bajo','selected-moderado','selected-alto','auto-highlight');
+  });
+}
+
+function highlightConcl(id, isAuto) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const val = el.getAttribute('data-val').toLowerCase();
+  el.classList.add('selected-' + val);
+  if (isAuto) el.classList.add('auto-highlight');
+}
+
+// ── Sección F ─────────────────────────────────────────────────────────────────
+function updateConclResumen() {
+  const cirugia = document.getElementById('cirugia_text').value.trim() || 'la cirugía programada';
+  const sel = document.querySelector('.concl-cell.selected-bajo, .concl-cell.selected-moderado, .concl-cell.selected-alto');
+  const el = document.getElementById('concl-texto');
+  if (!sel) {
+    el.textContent = 'Se completará automáticamente al seleccionar criterios y tipo de cirugía.';
+    el.classList.add('vacio');
+    return;
+  }
+  let nivel = sel.classList.contains('selected-alto') ? 'ALTO'
+            : sel.classList.contains('selected-moderado') ? 'MODERADO' : 'BAJO';
+  el.textContent = `${nivel} para ${cirugia}.`;
+  el.classList.remove('vacio');
+}
+
+// ── Copiar para HC ───────────────────────────────────────────────────────────
+function copyToHC() {
+  const v = id => document.getElementById(id)?.value?.trim() || '';
+
+  const lines = [
+    `Antecedentes: ${v('antecedentes')}`,
+    `Medicación habitual: ${v('medicacion')}`,
+    `Examen físico: ${v('examen')} | PA: ${v('pa')}`,
+    `ECG: ${v('ecg')}`
+  ];
+
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const btn = document.getElementById('btn-copy-hc');
+    btn.textContent = '✓ Copiado';
+    btn.classList.add('copiado');
+    setTimeout(() => { btn.textContent = 'Copiar para HC'; btn.classList.remove('copiado'); }, 2500);
+  });
+}
+
+// ── Firma ────────────────────────────────────────────────────────────────────
+function loadSignature(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    sigDataUrl = e.target.result;
+    localStorage.setItem('cardiomed_firma', sigDataUrl);
+    const img = document.getElementById('sig-img');
+    img.src = sigDataUrl;
+    img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Limpiar ──────────────────────────────────────────────────────────────────
+function clearForm() {
+  if (!confirm('¿Limpiar todos los datos del formulario?')) return;
+  ['paciente','edad','cirugia_text','antecedentes','medicacion','examen','pa','ecg','examenes','recomendaciones']
+    .forEach(id => document.getElementById(id).value = '');
+  document.querySelectorAll('input[type="checkbox"]').forEach(el => el.checked = false);
+  clearConclHighlight();
+  document.querySelectorAll('.risk-box').forEach(el => el.className = 'risk-box');
+  riesgoClinicoActual = null;
+  riesgoCirugiaActual = null;
+  conclManual = null;
+  const cf = document.getElementById('concl-texto');
+  cf.textContent = 'Se completará automáticamente al seleccionar criterios y tipo de cirugía.';
+  cf.classList.add('vacio');
+  // Restore date
+  const today = new Date();
+  document.getElementById('fecha').value =
+    today.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+</script>
+</body>
+</html>
