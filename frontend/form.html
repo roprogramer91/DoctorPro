@@ -575,14 +575,14 @@ let conclManual = null;
 window.onload = async function() {
   // Auth guard: si no hay token, ir al login
   const token = localStorage.getItem('dp_token');
-  if (!token) { window.location.href = 'login.html'; return; }
+  if (!token) { window.location.href = 'index.html'; return; }
 
   // Cargar perfil del médico desde API
   try {
     const res = await fetch(`${API}/profile`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    if (!res.ok) { localStorage.clear(); window.location.href = 'login.html'; return; }
+    if (!res.ok) { localStorage.clear(); window.location.href = 'index.html'; return; }
     const doctor = await res.json();
     loadDoctorProfile(doctor);
   } catch {
@@ -616,7 +616,7 @@ function loadDoctorProfile(doctor) {
 function logout() {
   localStorage.removeItem('dp_token');
   localStorage.removeItem('dp_doctor');
-  window.location.href = 'login.html';
+  window.location.href = 'index.html';
 }
 
 // ── Riesgo Clínico ───────────────────────────────────────────────────────────
