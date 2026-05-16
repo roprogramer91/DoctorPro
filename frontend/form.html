@@ -561,9 +561,10 @@
 
 <script>
 // ── Config ───────────────────────────────────────────────────────────────────
-const API = window.location.hostname === 'localhost'
-  ? 'http://localhost:3000/api'
-  : 'https://doctorpro-api.up.railway.app/api'; // reemplazar con URL real de Railway prod
+const DEV_HOSTS = ['localhost', '127.0.0.1'];
+const API = DEV_HOSTS.includes(window.location.hostname)
+  ? 'https://doctorpro-dev.up.railway.app/api'
+  : 'https://doctorpro-production.up.railway.app/api';
 
 // ── State ────────────────────────────────────────────────────────────────────
 let riesgoClinicoActual = null;
