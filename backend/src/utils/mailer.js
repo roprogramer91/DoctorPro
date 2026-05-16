@@ -1,24 +1,11 @@
-const nodemailer = require('nodemailer');
-const dns = require('dns');
-dns.setDefaultResultOrder('ipv4first');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.hostinger.com',
-  port: 465,
-  secure: true,
-  family: 4,
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function sendResetEmail(toEmail, resetToken, frontendUrl) {
   const resetLink = `${frontendUrl}/reset-password.html?token=${resetToken}`;
-  await transporter.sendMail({
-    from: `"DoctorPro" <${process.env.SMTP_USER}>`,
+  await resend.emails.send({
+    from: 'DoctorPro <noreply@doctorpremium.online>',
     to: toEmail,
     subject: 'Recupero de contraseña — DoctorPro',
     html: `
