@@ -202,7 +202,41 @@ hr.divider { border: none; border-top: 1px solid #ccc; margin: 7px 0; }
   .signature-area { justify-content: center; }
 }
 
+/* EMAIL MODAL */
+.email-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.email-modal-overlay.open { display: flex; }
+.email-modal-box {
+  background: #fff;
+  padding: 32px;
+  border-radius: 8px;
+  width: 340px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  font-family: Arial, sans-serif;
+}
+.email-modal-box h3 { margin: 0 0 6px; font-size: 16px; }
+.email-modal-box p  { margin: 0 0 16px; font-size: 13px; color: #666; }
+.email-modal-box input[type="email"] {
+  width: 100%; padding: 10px; border: 1px solid #ddd;
+  border-radius: 4px; font-size: 14px; margin-bottom: 16px;
+}
+.email-modal-status { font-size: 13px; color: #555; min-height: 18px; margin-bottom: 12px; }
+.email-modal-actions { display: flex; gap: 8px; }
+.email-modal-actions button { flex: 1; border: none; padding: 10px; border-radius: 4px; font-size: 14px; cursor: pointer; }
+.btn-modal-send   { background: #1a7a3e; color: white; font-weight: bold; }
+.btn-modal-cancel { background: #888; color: white; }
+.btn-send-report  { background: #1a7a3e; color: white; }
+
 @media print {
+  .email-modal-overlay { display: none !important; }
+
   body { background: white; }
   .toolbar { display: none !important; }
   .page { margin: 0; box-shadow: none; padding: 10mm 12mm 8mm 12mm; }

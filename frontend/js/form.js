@@ -238,3 +238,58 @@ function clearForm() {
   document.getElementById('fecha').value =
     today.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
+
+// ── Enviar informe al paciente ────────────────────────────────────────────────
+function openEmailModal() {
+  document.getElementById('modal-email').value = '';
+  document.getElementById('modal-status').textContent = '';
+  document.getElementById('modal-send-btn').disabled = false;
+  document.getElementById('modal-send-btn').textContent = 'Enviar';
+  document.getElementById('email-modal').classList.add('open');
+}
+
+function closeEmailModal() {
+  document.getElementById('email-modal').classList.remove('open');
+}
+
+async function doSendReport() {
+  const email = document.getElementById('modal-email').value.trim();
+  if (!email) { document.getElementById('modal-status').textContent = 'Ingresá un email válido.'; return; }
+
+  const btn    = document.getElementById('modal-send-btn');
+  const status = document.getElementById('modal-status');
+  btn.disabled = true;
+
+  try {
+    status.textContent = 'Generando PDF...';
+    const pdf = await html2pdf().set({
+      margin: 0,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).from(document.querySelector('.page')).outputPdf('datauristring');
+
+    status.textContent = 'Enviando...';
+    const token = localStorage.getItem('dp_token');
+    const res = await fetch(`${API}/reports/send`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        patient_email: email,
+        pdf_base64: pdf.split(',')[1],
+        patient_name: document.getElementById('paciente').value.trim()
+      })
+    });
+
+    if (res.ok) {
+      closeEmailModal();
+      alert('Informe enviado correctamente.');
+    } else {
+      status.textContent = 'Error al enviar. Intentá de nuevo.';
+      btn.disabled = false;
+    }
+  } catch {
+    status.textContent = 'Error al generar el PDF.';
+    btn.disabled = false;
+  }
+}

@@ -10,6 +10,7 @@
 
 <div class="toolbar">
   <button class="btn btn-print" onclick="window.print()">Imprimir / Guardar PDF</button>
+  <button type="button" class="btn btn-send-report" onclick="openEmailModal()">Enviar al paciente</button>
   <button class="btn btn-copy" id="btn-copy-hc" onclick="copyToHC()">Copiar para HC</button>
   <button class="btn btn-clear" onclick="clearForm()">Limpiar formulario</button>
   <button class="btn" style="background:#444;color:white;margin-left:auto" onclick="logout()">Salir</button>
@@ -280,6 +281,21 @@
 
 </div><!-- /page -->
 
+<!-- Modal enviar al paciente -->
+<div id="email-modal" class="email-modal-overlay">
+  <div class="email-modal-box">
+    <h3>Enviar informe al paciente</h3>
+    <p>El PDF se generará y se enviará por email.</p>
+    <input type="email" id="modal-email" placeholder="Email del paciente">
+    <div id="modal-status" class="email-modal-status"></div>
+    <div class="email-modal-actions">
+      <button type="button" id="modal-send-btn" class="btn-modal-send" onclick="doSendReport()">Enviar</button>
+      <button type="button" class="btn-modal-cancel" onclick="closeEmailModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="js/form.js"></script>
 </body>
 </html>

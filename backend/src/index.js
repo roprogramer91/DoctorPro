@@ -24,6 +24,7 @@ app.use('/api/profile', require('./routes/profile'));
 // El webhook de MP va sin JWT (lo llama MP directamente)
 app.use('/api/payments/webhook', require('./routes/payments'));
 app.use('/api/payments', authMiddleware, require('./routes/payments'));
+app.use('/api/reports', authMiddleware, require('./routes/reports'));
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok', env: process.env.NODE_ENV }));
 
