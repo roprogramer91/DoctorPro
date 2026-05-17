@@ -18,15 +18,59 @@ window.onload = async function() {
     if (!res.ok) { localStorage.clear(); window.location.href = 'index.html'; return; }
     const doctor = await res.json();
     loadDoctorProfile(doctor);
+    checkAccess(doctor);
   } catch {
     const cached = localStorage.getItem('dp_doctor');
-    if (cached) loadDoctorProfile(JSON.parse(cached));
+    if (cached) {
+      loadDoctorProfile(JSON.parse(cached));
+      checkAccess(JSON.parse(cached));
+    }
   }
 
   const today = new Date();
   document.getElementById('fecha').value =
     today.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
+
+function checkAccess(doctor) {
+  const now = new Date();
+  const trialOk  = doctor.trial_ends && new Date(doctor.trial_ends) > now;
+  const subOk    = doctor.subscription_status === 'active' &&
+                   doctor.subscribed_until && new Date(doctor.subscribed_until) > now;
+
+  if (!trialOk && !subOk) {
+    showPaywall();
+  }
+}
+
+function showPaywall() {
+  document.querySelector('.page').style.display = 'none';
+  document.querySelector('.toolbar').style.display = 'none';
+
+  const wall = document.createElement('div');
+  wall.style.cssText = 'max-width:420px;margin:80px auto;background:#fff;padding:40px 32px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.12);text-align:center;font-family:Arial,sans-serif;';
+  wall.innerHTML = `
+    <div style="font-size:26px;font-weight:bold;margin-bottom:8px;">Doctor<span style="color:#cc0000">Pro</span></div>
+    <p style="color:#555;margin-bottom:24px;">Tu período de prueba ha finalizado.<br>Suscribite para seguir usando DoctorPro.</p>
+    <button onclick="subscribe()" style="background:#cc0000;color:white;border:none;padding:13px 32px;border-radius:4px;font-size:16px;font-weight:bold;cursor:pointer;width:100%;">
+      Suscribirme ahora
+    </button>
+    <p style="font-size:12px;color:#888;margin-top:16px;">Renovación mensual automática. Cancelá cuando quieras.</p>
+    <div style="margin-top:20px;"><a href="index.html" style="color:#cc0000;font-size:13px;">Cerrar sesión</a></div>
+  `;
+  document.body.appendChild(wall);
+}
+
+async function subscribe() {
+  const token = localStorage.getItem('dp_token');
+  try {
+    const res  = await fetch(`${API}/payments/subscribe`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (data.init_point) window.location.href = data.init_point;
+  } catch { alert('Error al procesar el pago. Intentá de nuevo.'); }
+}
 
 function loadDoctorProfile(doctor) {
   const img = document.getElementById('sig-img');

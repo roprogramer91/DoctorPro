@@ -17,8 +17,13 @@ app.use(cors({
 
 app.use(express.json());
 
+const authMiddleware = require('./middleware/auth');
+
 app.use('/api/auth',    require('./routes/auth'));
 app.use('/api/profile', require('./routes/profile'));
+// El webhook de MP va sin JWT (lo llama MP directamente)
+app.use('/api/payments/webhook', require('./routes/payments'));
+app.use('/api/payments', authMiddleware, require('./routes/payments'));
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok', env: process.env.NODE_ENV }));
 

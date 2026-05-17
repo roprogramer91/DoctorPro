@@ -6,7 +6,9 @@ const db = require('../db');
 router.get('/', auth, async (req, res) => {
   try {
     const { rows } = await db.query(
-      'SELECT id, email, name, specialty, mp, mn, signature_url, trial_ends, active FROM doctors WHERE id = $1',
+      `SELECT id, email, name, specialty, mp, mn, signature_url, active,
+              trial_ends, subscription_status, subscribed_until
+       FROM doctors WHERE id = $1`,
       [req.doctor.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Médico no encontrado' });
