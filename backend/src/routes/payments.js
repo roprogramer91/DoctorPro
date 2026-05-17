@@ -6,7 +6,7 @@ const mp = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
 const preApproval = new PreApproval(mp);
 
 const PRICE    = Number(process.env.SUBSCRIPTION_PRICE) || 5000;
-const FRONTEND = (process.env.FRONTEND_URL || '').split(',')[0].trim();
+const BACK_URL = process.env.MP_BACK_URL || 'https://doctorpremium.online/form.html';
 
 // POST /api/payments/subscribe
 router.post('/subscribe', async (req, res) => {
@@ -23,7 +23,7 @@ router.post('/subscribe', async (req, res) => {
           transaction_amount: PRICE,
           currency_id: 'ARS'
         },
-        back_url: `${FRONTEND}/form.html`,
+        back_url: BACK_URL,
         status: 'pending'
       }
     });
