@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const prisma = require('../lib/prisma');
-const { sendResetEmail } = require('../utils/mailer');
+const { sendResetEmail, sendWelcomeEmail } = require('../utils/mailer');
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -18,6 +18,7 @@ router.post('/register', async (req, res) => {
       select: { id: true, email: true, name: true, specialty: true, mp: true, mn: true, trial_ends: true }
     });
     const token = jwt.sign({ id: doctor.id, email: doctor.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    sendWelcomeEmail(doctor.email, doctor.name).catch(err => console.error('welcome email error:', err));
     res.status(201).json({ token, doctor });
   } catch (err) {
     if (err.code === 'P2002') return res.status(409).json({ error: 'El email ya está registrado' });
