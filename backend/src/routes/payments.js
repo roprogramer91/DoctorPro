@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const { MercadoPagoConfig, PreApproval } = require('mercadopago');
-const db = require('../db');
+const prisma = require('../lib/prisma');
 
 const mp = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
 const preApproval = new PreApproval(mp);
@@ -9,7 +9,6 @@ const PRICE    = Number(process.env.SUBSCRIPTION_PRICE) || 5000;
 const FRONTEND = (process.env.FRONTEND_URL || '').split(',')[0].trim();
 
 // POST /api/payments/subscribe
-// Crea una suscripción MP y devuelve el link de pago
 router.post('/subscribe', async (req, res) => {
   const { id: doctorId, email } = req.doctor;
   try {
@@ -42,23 +41,24 @@ router.post('/webhook', async (req, res) => {
 
   try {
     const sub = await preApproval.get({ id: data.id });
-    const doctorId = sub.external_reference;
+    const doctorId = Number(sub.external_reference);
     const status   = sub.status; // authorized | paused | cancelled
 
     if (status === 'authorized') {
-      // Extender acceso 32 días desde ahora (margen por demoras)
-      await db.query(
-        `UPDATE doctors
-         SET subscription_id = $1, subscription_status = 'active', active = true,
-             subscribed_until = NOW() + INTERVAL '32 days'
-         WHERE id = $2`,
-        [sub.id, doctorId]
-      );
+      await prisma.doctor.update({
+        where: { id: doctorId },
+        data: {
+          subscription_id: sub.id,
+          subscription_status: 'active',
+          active: true,
+          subscribed_until: new Date(Date.now() + 32 * 24 * 60 * 60 * 1000) // 32 días
+        }
+      });
     } else if (status === 'cancelled' || status === 'paused') {
-      await db.query(
-        `UPDATE doctors SET subscription_status = $1, active = false WHERE id = $2`,
-        [status, doctorId]
-      );
+      await prisma.doctor.update({
+        where: { id: doctorId },
+        data: { subscription_status: status, active: false }
+      });
     }
     res.sendStatus(200);
   } catch (err) {

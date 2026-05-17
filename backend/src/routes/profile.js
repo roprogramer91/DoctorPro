@@ -1,33 +1,37 @@
 const router = require('express').Router();
 const auth = require('../middleware/auth');
-const db = require('../db');
+const prisma = require('../lib/prisma');
 
-// GET /api/profile  — devuelve el perfil del médico logueado
+const PROFILE_SELECT = {
+  id: true, email: true, name: true, specialty: true,
+  mp: true, mn: true, signature_url: true, active: true,
+  trial_ends: true, subscription_status: true, subscribed_until: true
+};
+
+// GET /api/profile
 router.get('/', auth, async (req, res) => {
   try {
-    const { rows } = await db.query(
-      `SELECT id, email, name, specialty, mp, mn, signature_url, active,
-              trial_ends, subscription_status, subscribed_until
-       FROM doctors WHERE id = $1`,
-      [req.doctor.id]
-    );
-    if (!rows.length) return res.status(404).json({ error: 'Médico no encontrado' });
-    res.json(rows[0]);
+    const doctor = await prisma.doctor.findUnique({
+      where: { id: req.doctor.id },
+      select: PROFILE_SELECT
+    });
+    if (!doctor) return res.status(404).json({ error: 'Médico no encontrado' });
+    res.json(doctor);
   } catch {
     res.status(500).json({ error: 'Error al obtener perfil' });
   }
 });
 
-// PUT /api/profile  — actualiza datos del médico
+// PUT /api/profile
 router.put('/', auth, async (req, res) => {
   const { name, specialty, mp, mn, signature_url } = req.body;
   try {
-    const { rows } = await db.query(
-      `UPDATE doctors SET name=$1, specialty=$2, mp=$3, mn=$4, signature_url=$5
-       WHERE id=$6 RETURNING id, email, name, specialty, mp, mn, signature_url`,
-      [name, specialty, mp, mn, signature_url, req.doctor.id]
-    );
-    res.json(rows[0]);
+    const doctor = await prisma.doctor.update({
+      where: { id: req.doctor.id },
+      data: { name, specialty, mp, mn, signature_url },
+      select: { id: true, email: true, name: true, specialty: true, mp: true, mn: true, signature_url: true }
+    });
+    res.json(doctor);
   } catch {
     res.status(500).json({ error: 'Error al actualizar perfil' });
   }

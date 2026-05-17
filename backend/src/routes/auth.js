@@ -2,7 +2,7 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const db = require('../db');
+const prisma = require('../lib/prisma');
 const { sendResetEmail } = require('../utils/mailer');
 
 // POST /api/auth/register
@@ -12,16 +12,15 @@ router.post('/register', async (req, res) => {
 
   try {
     const hash = await bcrypt.hash(password, 10);
-    const { rows } = await db.query(
-      `INSERT INTO doctors (email, password, name, specialty, mp, mn)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, email, name, specialty, mp, mn, trial_ends`,
-      [email, hash, name, specialty, mp, mn]
-    );
-    const doctor = rows[0];
+    const trialEnds = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 días
+    const doctor = await prisma.doctor.create({
+      data: { email, password: hash, name, specialty, mp, mn, trial_ends: trialEnds },
+      select: { id: true, email: true, name: true, specialty: true, mp: true, mn: true, trial_ends: true }
+    });
     const token = jwt.sign({ id: doctor.id, email: doctor.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token, doctor });
   } catch (err) {
-    if (err.code === '23505') return res.status(409).json({ error: 'El email ya está registrado' });
+    if (err.code === 'P2002') return res.status(409).json({ error: 'El email ya está registrado' });
     res.status(500).json({ error: 'Error al registrar' });
   }
 });
@@ -32,10 +31,9 @@ router.post('/login', async (req, res) => {
   if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
 
   try {
-    const { rows } = await db.query('SELECT * FROM doctors WHERE email = $1', [email]);
-    if (!rows.length) return res.status(401).json({ error: 'Credenciales incorrectas' });
+    const doctor = await prisma.doctor.findUnique({ where: { email } });
+    if (!doctor) return res.status(401).json({ error: 'Credenciales incorrectas' });
 
-    const doctor = rows[0];
     const valid = await bcrypt.compare(password, doctor.password);
     if (!valid) return res.status(401).json({ error: 'Credenciales incorrectas' });
 
@@ -54,21 +52,21 @@ router.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email requerido' });
 
+  const generic = { message: 'Si el email existe, recibirás un enlace de recupero.' };
   try {
-    const { rows } = await db.query('SELECT id FROM doctors WHERE email = $1', [email]);
-    // Respuesta genérica para no revelar si el email existe
-    if (!rows.length) return res.json({ message: 'Si el email existe, recibirás un enlace de recupero.' });
+    const doctor = await prisma.doctor.findUnique({ where: { email }, select: { id: true } });
+    if (!doctor) return res.json(generic);
 
     const token = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 3600000); // 1 hora
 
-    await db.query(
-      'UPDATE doctors SET reset_token = $1, reset_token_expires = $2 WHERE email = $3',
-      [token, expires, email]
-    );
+    await prisma.doctor.update({
+      where: { email },
+      data: { reset_token: token, reset_token_expires: expires }
+    });
 
     await sendResetEmail(email, token, process.env.FRONTEND_URL.split(',')[0].trim());
-    res.json({ message: 'Si el email existe, recibirás un enlace de recupero.' });
+    res.json(generic);
   } catch (err) {
     console.error('forgot-password error:', err);
     res.status(500).json({ error: 'Error al procesar la solicitud' });
@@ -81,17 +79,17 @@ router.post('/reset-password', async (req, res) => {
   if (!token || !password) return res.status(400).json({ error: 'Token y contraseña requeridos' });
 
   try {
-    const { rows } = await db.query(
-      'SELECT id FROM doctors WHERE reset_token = $1 AND reset_token_expires > NOW()',
-      [token]
-    );
-    if (!rows.length) return res.status(400).json({ error: 'Token inválido o vencido' });
+    const doctor = await prisma.doctor.findFirst({
+      where: { reset_token: token, reset_token_expires: { gt: new Date() } },
+      select: { id: true }
+    });
+    if (!doctor) return res.status(400).json({ error: 'Token inválido o vencido' });
 
     const hash = await bcrypt.hash(password, 10);
-    await db.query(
-      'UPDATE doctors SET password = $1, reset_token = NULL, reset_token_expires = NULL WHERE id = $2',
-      [hash, rows[0].id]
-    );
+    await prisma.doctor.update({
+      where: { id: doctor.id },
+      data: { password: hash, reset_token: null, reset_token_expires: null }
+    });
 
     res.json({ message: 'Contraseña actualizada correctamente' });
   } catch (err) {
