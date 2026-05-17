@@ -12,7 +12,7 @@ router.post('/register', async (req, res) => {
 
   try {
     const hash = await bcrypt.hash(password, 10);
-    const trialEnds = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 días
+    const trialEnds = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 días de prueba
     const doctor = await prisma.doctor.create({
       data: { email, password: hash, name, specialty, mp, mn, trial_ends: trialEnds },
       select: { id: true, email: true, name: true, specialty: true, mp: true, mn: true, trial_ends: true }
