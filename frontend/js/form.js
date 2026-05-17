@@ -262,12 +262,23 @@ async function doSendReport() {
 
   try {
     status.textContent = 'Generando PDF...';
-    const pdf = await html2pdf().set({
-      margin: 0,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 1200 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).from(document.querySelector('.page')).outputPdf('datauristring');
+
+    // Clonar .page y forzar ancho A4 para que el PDF siempre salga en formato escritorio
+    const clone = document.querySelector('.page').cloneNode(true);
+    clone.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;min-width:794px;background:white;';
+    document.body.appendChild(clone);
+
+    let pdf;
+    try {
+      pdf = await html2pdf().set({
+        margin: 0,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).from(clone).outputPdf('datauristring');
+    } finally {
+      document.body.removeChild(clone);
+    }
 
     status.textContent = 'Enviando...';
     const token = localStorage.getItem('dp_token');
